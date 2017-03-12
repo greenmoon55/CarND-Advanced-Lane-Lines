@@ -23,9 +23,10 @@ The goals / steps of this project are the following:
 [image3]: ./images/threshold_pipeline.png "Binary Example"
 [image4]: ./images/perspective_transform_orig.png "Warp Example"
 [image5]: ./images/transformed_image_straight.png "Warp Example"
-[image5]: ./examples/color_fit_lines.jpg "Fit Visual"
-[image6]: ./examples/example_output.jpg "Output"
-[video1]: ./project_video.mp4 "Video"
+[image6]: ./images/histogram.png
+[image7]: ./images/sliding_window.png
+[image8]: ./images/plot_back.png
+[video1]: ./output.mp4 "Video"
 
 ## [Rubric](https://review.udacity.com/#!/rubrics/571/view) Points
 ###Here I will consider the rubric points individually and describe how I addressed each point in my implementation.  
@@ -61,8 +62,6 @@ I used a combination of color and gradient thresholds to generate a binary image
 ####3. Describe how (and identify where in your code) you performed a perspective transform and provide an example of a transformed image.
 
 The code for my perspective transform includes a function called `warp()`.  This function takes as inputs an image (`img`), as well as the transform matrix obtained by camera caliberation.  I chose the hardcode the source and destination points:
-src = np.float32([(260, 680), (596, 450), (685, 450), (1045, 680)])
-dst = np.float32([(320, 720), (320, 0), (900, 0), (900, 720)])
 
 | Source        | Destination   | 
 |:-------------:|:-------------:| 
@@ -78,19 +77,27 @@ I verified that my perspective transform was working as expected by drawing the 
 
 ####4. Describe how (and identify where in your code) you identified lane-line pixels and fit their positions with a polynomial?
 
-Then I did some other stuff and fit my lane lines with a 2nd order polynomial kinda like this:
+![alt text][image6]
 
-![alt text][image5]
+I applied the sliding window approach. First, I identified two peaks on the histogram and set them as the center of two windows. Then I search upwards and find the center of each sliding window by averaging x values. I used a total of 9 windows. Lastly, I fit my lane lines with a 2nd order polynomial kinda like this:
+
+![alt text][image7]
+
+Note that the histogram is only needed in the first window and first picture, or when the last frame in the video failed to identify lane lines. After getting fitted lines, I can simply find points that are near the previously detected lines in the next video to increase processing speed.
 
 ####5. Describe how (and identify where in your code) you calculated the radius of curvature of the lane and the position of the vehicle with respect to center.
 
-I did this in lines # through # in my code in `my_other_file.py`
+I did this in `calculate_curvature` and `draw_image` methods.
+
+Curvature is calculated by the equation provided in the course material. I also multiplied `ym_per_pix` and `xm_per_pix` to get the result in meters rather than pixels.
+
+I calculated the lane center by averaging the left and right x values in the bottom, then compare it with the center of the picture. 
 
 ####6. Provide an example image of your result plotted back down onto the road such that the lane area is identified clearly.
 
-I implemented this step in lines # through # in my code in `yet_another_file.py` in the function `map_lane()`.  Here is an example of my result on a test image:
+I implemented this step in the function `draw_image`.  Here is an example of my result on a test image:
 
-![alt text][image6]
+![alt text][image8]
 
 ---
 
@@ -98,7 +105,7 @@ I implemented this step in lines # through # in my code in `yet_another_file.py`
 
 ####1. Provide a link to your final video output.  Your pipeline should perform reasonably well on the entire project video (wobbly lines are ok but no catastrophic failures that would cause the car to drive off the road!).
 
-Here's a [link to my video result](./project_video.mp4)
+Here's a [link to my video result](./output.mp4)
 
 ---
 
@@ -106,5 +113,8 @@ Here's a [link to my video result](./project_video.mp4)
 
 ####1. Briefly discuss any problems / issues you faced in your implementation of this project.  Where will your pipeline likely fail?  What could you do to make it more robust?
 
-Here I'll talk about the approach I took, what techniques I used, what worked and why, where the pipeline might fail and how I might improve it if I were going to pursue this project further.  
+The most important thing in this project is to find a robust color mask or gradients get all the lane lines that we needed. However, it is very difficult to find one. I started with sobel_x and thresholding on s channel. The threshold on s worked for yellow lines, but it couldn't omit the shadow between two lanes after a lot of trial and error. In the end, I tried the current methods to explictly mask yellow, which worked well.
 
+The second issue is that I've made many silly mistakes, such as forgetting to convert from int to float. Also it is very important to have a clear structure for debugging where lines of code should be grouped into methods or even classes. It will save a lot of debugging time.
+
+Though I do not have time to check challenge video, I think it will likely to fail when there are shadows or steep turns. To make it more robust, I can try to average values from multiple frames and omit the curvature if it is does not meet highway specifications.
